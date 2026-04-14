@@ -1,0 +1,62 @@
+﻿# =========================
+# App A - Minimal runtime
+# Python 3.12.10
+# Streamlit + OCPP 1.6 + MQTT + MySQL + Dashboard + API + ML basic
+# =========================
+
+# --- Core ---
+numpy>=1.26,<2.1
+pandas>=2.2,<2.3
+requests>=2.32,<3
+python-dateutil>=2.9,<3
+
+# --- Streamlit + viz ---
+streamlit>=1.38
+plotly>=5.20
+altair>=5.0
+vl-convert-python>=1.3
+pydeck>=0.9
+pillow>=10.0
+matplotlib>=3.8
+
+# --- Maps ---
+folium>=0.16
+streamlit-folium>=0.20
+
+# --- Streamlit utilities ---
+streamlit-autorefresh>=1.0
+
+# --- WebSocket / OCPP ---
+websockets>=11,<13
+websocket-client>=1.8
+
+# Install OCPP from GitHub master (needs Git installed)
+git+https://github.com/mobilityhouse/ocpp.git@master
+
+# --- MQTT ---
+paho-mqtt>=1.6,<3
+
+# --- MySQL / ORM ---
+mysql-connector-python>=9.0
+SQLAlchemy>=2.0
+
+# --- Security / auth ---
+bcrypt>=4.1
+captcha>=0.6
+
+# --- PDF export ---
+# IMPORTANT: gunakan fpdf2, dan pastikan tidak ada package "fpdf" (pyfpdf) terinstall,
+# karena modulnya sama-sama bernama "fpdf" dan sering bikin tabrakan import.
+fpdf2>=2.7
+
+# --- Modbus (Python 3.12: wajib PyModbus 3.x) ---
+pymodbus>=3.6,<4
+
+# --- Time series / stats / ML ---
+scipy>=1.11
+statsmodels>=0.14
+scikit-learn>=1.4
+xgboost>=2.1
+
+# --- Deep learning (TensorFlow supports Python 3.12) ---
+tensorflow==2.20.0

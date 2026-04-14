@@ -1,0 +1,19 @@
+Instalasi Program pendukung kegiatan Riset
+
+1. Python 3.12.10 instalasi di folder custom Python, bukan di user
+2. Apache netbeans 12.3
+3. Java 17.0.1 masukkan Path
+4. Maven 3.9.8 masukkan Path
+5. Heidi SQL
+6. My sql
+7. Xampp 3.2.4
+8. Indusoft Web studio 8
+9. Install requirement python
+10. Anydesk
+11. Advanced IP Scanner
+12. Modbus Poll
+13. Zotero
+14. MQTTX
+15. Mosquitto
+16. Visual Studio
+17. Notepad
