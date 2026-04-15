@@ -1,7 +1,4 @@
-"""
-pages/dashboard_lokasi.py
-Dashboard Lokasi – Peta & ringkasan semua Charging Station.
-"""
+
 from __future__ import annotations
 
 import sys
@@ -26,7 +23,7 @@ _STATUS_COLOR = {"Online": "#00d4aa", "Offline": "#ff4b6e", "Maintenance": "#ffd
 def render_dashboard_lokasi() -> None:
     st.markdown(
         "<h1 style='font-size:2rem;font-weight:800;margin-bottom:0.2rem;'>"
-        "🗺️ Dashboard Lokasi Charging Station</h1>",
+        "Dashboard Lokasi Charging Station</h1>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -38,17 +35,17 @@ def render_dashboard_lokasi() -> None:
 
     # ── KPI ───────────────────────────────────────────────────────────────
     k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("🏢 Total CS",        len(_STATIONS))
-    k2.metric("🟢 CS Online",       (_STATIONS["status"] == "Online").sum())
-    k3.metric("🔌 Total Konektor",  _STATIONS["connector"].sum())
-    k4.metric("⚡ Konektor Aktif",  _STATIONS["active"].sum())
-    k5.metric("☀️ Energi Hari Ini", f"{_STATIONS['energy_today_kwh'].sum():,.1f} kWh")
+    k1.metric("Total CS",        len(_STATIONS))
+    k2.metric("CS Online",       (_STATIONS["status"] == "Online").sum())
+    k3.metric("Total Konektor",  _STATIONS["connector"].sum())
+    k4.metric("Konektor Aktif",  _STATIONS["active"].sum())
+    k5.metric("Energi Hari Ini", f"{_STATIONS['energy_today_kwh'].sum():,.1f} kWh")
     st.divider()
 
     col_map, col_tbl = st.columns([1.6, 1], gap="large")
 
     with col_map:
-        st.markdown("#### 📍 Peta Stasiun")
+        st.markdown("#### Peta Stasiun")
         colors = [_STATUS_COLOR.get(s, "#aaa") for s in _STATIONS["status"]]
 
         fig = go.Figure()
@@ -83,7 +80,7 @@ def render_dashboard_lokasi() -> None:
         st.plotly_chart(fig, use_container_width=True)
 
     with col_tbl:
-        st.markdown("#### 📋 Status Stasiun")
+        st.markdown("#### Status Stasiun")
         for _, row in _STATIONS.iterrows():
             c   = _STATUS_COLOR.get(row["status"], "#aaa")
             pct = int(row["active"] / row["connector"] * 100) if row["connector"] else 0
@@ -99,7 +96,7 @@ def render_dashboard_lokasi() -> None:
                     </span>
                   </div>
                   <div style="color:#8892a4;font-size:0.8rem;margin-top:4px;">
-                    {row['kota']} · 🔌 {row['active']}/{row['connector']} aktif ·
+                    {row['kota']} · {row['active']}/{row['connector']} aktif ·
                     ⚡ {row['energy_today_kwh']:.1f} kWh
                   </div>
                   <div style="background:#0e1117;border-radius:4px;height:5px;margin-top:8px;">
@@ -111,7 +108,7 @@ def render_dashboard_lokasi() -> None:
             )
 
     st.divider()
-    st.markdown("#### 📊 Energi Hari Ini per Stasiun")
+    st.markdown("#### Energi Hari Ini per Stasiun")
     df_bar = _STATIONS.sort_values("energy_today_kwh", ascending=True)
     fig2 = go.Figure(go.Bar(
         x=df_bar["energy_today_kwh"], y=df_bar["nama"], orientation="h",

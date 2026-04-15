@@ -1,24 +1,21 @@
-"""
-app.py — Entry Point Utama CMOS
-Jalankan: streamlit run app.py
-"""
 import sys
 import os
+import random
+import string
+from captcha.image import ImageCaptcha
 
 # Pastikan root folder masuk ke path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 
-# ── PAGE CONFIG — HARUS BARIS PERTAMA STREAMLIT ───────────────────────────
 st.set_page_config(
-    page_title="CMOS – Charging Station Management System",
+    page_title="Charging Station Management System",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── GLOBAL CSS ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
     /* Sembunyikan page list bawaan Streamlit */
@@ -42,7 +39,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── IMPORT PAGES ──────────────────────────────────────────────────────────
 import importlib, traceback
 
 _PAGE_MODULES = {
@@ -59,14 +55,13 @@ _PAGE_MODULES = {
 
 
 def _load_page(page_name: str):
-    """Lazy-load halaman saat dipilih."""
     mod_path, func_name = _PAGE_MODULES[page_name]
     try:
         mod  = importlib.import_module(mod_path)
         func = getattr(mod, func_name)
         return func
     except Exception as e:
-        st.error(f"❌ Gagal memuat halaman '{page_name}': {e}")
+        st.error(f" Gagal memuat halaman '{page_name}': {e}")
         with st.expander("Detail Error"):
             st.code(traceback.format_exc())
         return None
@@ -83,9 +78,17 @@ _USERS = {
     "operator":  {"password": "op123",    "role": "Operator"},
 }
 
+def generate_new_captcha():
+    """Membuat teks CAPTCHA acak (5 karakter huruf kapital & angka)"""
+    chars = string.ascii_uppercase + string.digits
+    st.session_state["captcha_text"] = ''.join(random.choices(chars, k=5))
 
-# ── LOGIN PAGE ─────────────────────────────────────────────────────────────
+
 def render_login():
+    # Pastikan CAPTCHA di-generate saat halaman login pertama kali dibuka
+    if "captcha_text" not in st.session_state or not st.session_state["captcha_text"]:
+        generate_new_captcha()
+
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -94,40 +97,55 @@ def render_login():
                     border:2px solid #00d4aa;border-radius:16px;padding:30px;
                     box-shadow:0 0 30px rgba(0,212,170,0.15);margin-bottom:24px;">
             <div style="font-size:3rem;">⚡</div>
-            <div style="font-size:2.5rem;font-weight:900;color:#00d4aa;letter-spacing:6px;">CMOS</div>
+            <div style="font-size:2.5rem;font-weight:900;color:#00d4aa;letter-spacing:6px;"></div>
             <div style="color:#8892a4;font-size:0.8rem;letter-spacing:2px;margin-top:5px;">
                 CHARGING STATION MANAGEMENT SYSTEM
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("### 🔐 Login")
+        st.markdown("### Login")
+        
+        # Generate Gambar CAPTCHA dari Session State
+        image_captcha = ImageCaptcha(width=250, height=80)
+        captcha_image = image_captcha.generate_image(st.session_state["captcha_text"])
+
         with st.form("login_form"):
             username = st.text_input("Username", placeholder="Masukkan username")
             password = st.text_input("Password", type="password", placeholder="Masukkan password")
-            submit   = st.form_submit_button("🚀 Login", use_container_width=True, type="primary")
+            
+            # UI CAPTCHA
+            st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+            st.caption("Verifikasi Keamanan:")
+            st.image(captcha_image, use_container_width=False)
+            captcha_input = st.text_input("Ketik kode di atas", placeholder="Masukkan CAPTCHA")
+            
+            submit   = st.form_submit_button("Login", use_container_width=True, type="primary")
 
         if submit:
             user = _USERS.get(username)
-            if user and user["password"] == password:
+            
+            # Validasi CAPTCHA terlebih dahulu
+            if captcha_input.upper() != st.session_state["captcha_text"]:
+                st.error("CAPTCHA salah! Silakan coba lagi.")
+                generate_new_captcha() # Reset CAPTCHA
+                st.rerun()
+                
+            # Validasi Akun jika CAPTCHA benar
+            elif user and user["password"] == password:
                 st.session_state["logged_in"] = True
                 st.session_state["username"]  = username
                 st.session_state["role"]      = user["role"]
-                st.success("✅ Login berhasil!")
+                st.session_state["captcha_text"] = "" # Hapus memori CAPTCHA
+                st.success("Login berhasil!")
                 st.rerun()
+                
             else:
-                st.error("❌ Username atau password salah.")
-
-        with st.expander("💡 Akun Demo"):
-            st.markdown("""
-| Username | Password | Role |
-|---|---|---|
-| ganiarafidah | admin123 | Superadmin |
-| operator | op123 | Operator |
-            """)
+                st.error("Username atau password salah.")
+                generate_new_captcha() # Reset CAPTCHA demi keamanan
+                st.rerun()
 
 
-# ── SIDEBAR ────────────────────────────────────────────────────────────────
 def render_sidebar() -> str:
     with st.sidebar:
         # Logo
@@ -136,9 +154,6 @@ def render_sidebar() -> str:
             <div style="background:linear-gradient(135deg,#0d1117,#161b22);
                         border:2px solid #00d4aa;border-radius:12px;padding:15px;margin-bottom:10px;">
                 <span style="font-size:2rem;">⚡</span>
-                <div style="font-size:1.8rem;font-weight:900;color:#00d4aa;letter-spacing:4px;">
-                    CMOS
-                </div>
                 <div style="font-size:0.6rem;color:#aaa;letter-spacing:1px;">
                     CHARGING MANAGEMENT SYSTEM
                 </div>
@@ -152,7 +167,7 @@ def render_sidebar() -> str:
         st.markdown(f"""
         <div style="background:#1e4d2b;border:1px solid #2d7a3a;border-radius:8px;
                     padding:10px 14px;margin-bottom:16px;">
-            <div style="color:#aaffaa;font-size:0.75rem;">👤 Selamat datang,</div>
+            <div style="color:#aaffaa;font-size:0.75rem;">Selamat datang,</div>
             <div style="color:#fff;font-weight:bold;">{uname}</div>
             <div style="color:#88ff88;background:#0d2b16;display:inline-block;
                         padding:2px 8px;border-radius:10px;font-size:0.72rem;margin-top:3px;">
@@ -162,7 +177,7 @@ def render_sidebar() -> str:
         """, unsafe_allow_html=True)
 
         # Navigasi
-        st.markdown("### 🧭 Navigasi")
+        st.markdown("### Navigasi")
         page_options = list(_PAGE_MODULES.keys())
         idx = page_options.index(st.session_state["page"]) \
               if st.session_state["page"] in page_options else 0
@@ -173,7 +188,7 @@ def render_sidebar() -> str:
 
         # Auto-refresh khusus Energy Monitoring
         if selected == "Energy Monitoring":
-            auto = st.toggle("🔄 Auto Refresh (10 detik)", value=False)
+            auto = st.toggle("Auto Refresh (10 detik)", value=False)
             if auto:
                 try:
                     from streamlit_autorefresh import st_autorefresh
@@ -182,18 +197,15 @@ def render_sidebar() -> str:
                     st.warning("Install: pip install streamlit-autorefresh")
 
         # Logout
-        if st.button("🚪 Logout", use_container_width=True):
+        if st.button("Logout", use_container_width=True):
             for k in list(st.session_state.keys()):
                 del st.session_state[k]
             st.rerun()
 
         st.divider()
-        st.caption("CMOS v1.0.0 | BRIN Research")
-
     return selected
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────
 def main():
     if not st.session_state.get("logged_in"):
         render_login()
@@ -207,7 +219,7 @@ def main():
         try:
             render_func()
         except Exception as e:
-            st.error(f"❌ Error saat render halaman: {e}")
+            st.error(f"Error saat render halaman: {e}")
             with st.expander("Detail Error"):
                 st.code(traceback.format_exc())
 

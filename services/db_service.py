@@ -112,7 +112,7 @@ def create_tables() -> None:
 
 @st.cache_data(ttl=30, show_spinner=False)
 def fetch_energy_log(station_id: str = "CS_Serpong", limit: int = 500) -> pd.DataFrame:
-    """Fetch energy log. Fallback ke mock jika DB tidak tersedia."""
+    """Fetch energy log. Fallback ke mock JIKA DB benar-benar terputus/error."""
     session = get_session()
     if session:
         try:
@@ -123,11 +123,9 @@ def fetch_energy_log(station_id: str = "CS_Serpong", limit: int = 500) -> pd.Dat
                 .limit(limit)
                 .all()
             )
-            if rows:
-                return pd.DataFrame([
-                    {"Time_Stamp": r.Time_Stamp, "Energy_Trafo_2": r.Energy_Trafo_2}
-                    for r in rows
-                ])
+            # Langsung ubah ke DataFrame, tentukan kolomnya agar tidak error saat kosong
+            data = [{"Time_Stamp": r.Time_Stamp, "Energy_Trafo_2": r.Energy_Trafo_2} for r in rows]
+            return pd.DataFrame(data, columns=["Time_Stamp", "Energy_Trafo_2"])
         except Exception:
             pass
         finally:
@@ -147,16 +145,16 @@ def fetch_transactions(limit: int = 200) -> pd.DataFrame:
                 .limit(limit)
                 .all()
             )
-            if rows:
-                return pd.DataFrame([
-                    {
-                        "transaction_id": r.transaction_id,
-                        "connector_id":   r.connector_id,
-                        "start_time":     r.start_time,
-                        "energy_kwh":     r.energy_kwh,
-                    }
-                    for r in rows
-                ])
+            data = [
+                {
+                    "transaction_id": r.transaction_id,
+                    "connector_id":   r.connector_id,
+                    "start_time":     r.start_time,
+                    "energy_kwh":     r.energy_kwh,
+                }
+                for r in rows
+            ]
+            return pd.DataFrame(data, columns=["transaction_id", "connector_id", "start_time", "energy_kwh"])
         except Exception:
             pass
         finally:

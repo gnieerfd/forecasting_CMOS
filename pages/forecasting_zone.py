@@ -1,24 +1,4 @@
-"""
-pages/forecasting_zone.py  ─ CMOS v3 (FIXED)
-Energy Demand Forecasting – 6 Model: ARIMA · SVR · LR · XGBoost · ANN · LSTM
 
-DAFTAR BUG YANG DIPERBAIKI
-══════════════════════════════════════════════════════════════════
-1. ARIMA train_pred panjang salah → pakai fittedvalues dengan index yang benar
-2. LSTM/ANN/SVR/LR: future_pred loop pakai scaled yang belum diupdate → pakai
-   buffer tersendiri `last_window` yang benar-benar bergeser tiap step
-3. ARIMA future refit duplikat (refit dua kali, lambat) → cukup satu fit
-4. st.cache_data pada train_model menyimpan objek TF/Keras yang tidak bisa
-   di-pickle → LSTM sekarang memakai numpy-only return (bobot disimpan sbg array)
-5. chart_choice "Choose chart…" masih render metric placeholder di bawah
-   walau result sudah ada → diperbaiki logic kondisionalnya
-6. forecast_days number_input menghasilkan int tapi dikirim sbg int langsung ✓
-7. window size 1 membuat _windows() menghasilkan array kosong → minimum guard 3
-8. Sliding window untuk ARIMA tidak relevan → disembunyikan otomatis
-9. Semua model: test_vals di-trim dua kali (split dan slice) → satu sumber kebenaran
-10. @st.cache_data tidak bisa menyimpan DataFrame ber-timezone → strip tz sebelum cache
-══════════════════════════════════════════════════════════════════
-"""
 from __future__ import annotations
 
 import io
@@ -35,9 +15,6 @@ import streamlit as st
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 
-# ══════════════════════════════════════════════════════════════════════════════
-# KONSTANTA
-# ══════════════════════════════════════════════════════════════════════════════
 _BG   = "#0e1117"
 _CARD = "#1c2333"
 _GRID = "#1e2a3a"
@@ -49,10 +26,6 @@ _C_FUTURE  = "#ffd166"   # gold  – forecast masa depan
 
 _MODELS = ["ARIMA", "SVR", "LR", "XGBOOST", "ANN", "LSTM"]
 _SPLIT_OPTIONS = {"90:10": 0.10, "80:20": 0.20, "70:30": 0.30, "60:40": 0.40}
-
-# ══════════════════════════════════════════════════════════════════════════════
-# HELPER UMUM
-# ══════════════════════════════════════════════════════════════════════════════
 
 def _load_file(uploaded) -> tuple[pd.DataFrame, str]:
     """Baca CSV atau XLSX dari UploadedFile. Return (df, error_str)."""
@@ -161,9 +134,6 @@ def _infer_freq(dates: pd.Series) -> str:
         return "D"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# FUNGSI TRAINING (di-cache agar tidak re-train saat navigasi)
-# ══════════════════════════════════════════════════════════════════════════════
 
 @st.cache_data(show_spinner=False)
 def train_model(
@@ -174,24 +144,6 @@ def train_model(
     window: int,
     forecast_days: int,
 ) -> dict:
-    """
-    Pipeline training + evaluasi + future forecast.
-
-    Parameter
-    ---------
-    cache_key    : Gabungan nama file + model + split + window + hari → invalidasi cache
-    values_json  : Series target dalam format JSON (menghindari masalah pickle TF/Keras)
-    model_name   : Nama model: ARIMA | SVR | LR | XGBOOST | ANN | LSTM
-    test_ratio   : Proporsi data uji, misal 0.20 = 20%
-    window       : Panjang sliding window (jumlah langkah waktu sebelumnya sebagai input)
-    forecast_days: Berapa hari ke depan ingin diprediksi
-
-    Return
-    ------
-    dict berisi: train_actual, train_pred, test_actual, test_pred,
-                 future_pred, train_metrics, test_metrics, feat_imp, split, window
-    """
-    # ── Rekonstruksi array nilai ──────────────────────────────────────────
     values = np.array(
         pd.read_json(io.StringIO(values_json), typ="series").values,
         dtype=float,
@@ -214,9 +166,6 @@ def train_model(
     train_actual = None
     test_actual  = None
 
-    # ══════════════════════════════════════════════════════════════════════
-    # MODEL: ARIMA
-    # ══════════════════════════════════════════════════════════════════════
     if model_name == "ARIMA":
         # ARIMA tidak memakai sliding window — model statistik berbasis differencing
         from statsmodels.tsa.arima.model import ARIMA as _ARIMA
@@ -242,9 +191,6 @@ def train_model(
         fut_fit = _ARIMA(values, order=(5, 1, 0)).fit()
         future_pred = np.asarray(fut_fit.forecast(steps=forecast_days)).astype(float)
 
-    # ══════════════════════════════════════════════════════════════════════
-    # MODEL: SVR / LR / XGBOOST / ANN  (window-based)
-    # ══════════════════════════════════════════════════════════════════════
     elif model_name in ("SVR", "LR", "XGBOOST", "ANN"):
 
         # Buat windows dari data latih (scaled)
@@ -291,26 +237,21 @@ def train_model(
 
         mdl.fit(X_tr, y_tr)
 
-        # Prediksi train (kembali ke skala asli)
         train_pred_s = mdl.predict(X_tr)
         train_pred   = scaler.inverse_transform(train_pred_s.reshape(-1, 1)).flatten()
         train_actual = train_vals_full[window:]    # ← potong window awal (tidak ada input sebelumnya)
 
-        # Prediksi test
         test_pred_s  = mdl.predict(X_te)
         test_pred    = scaler.inverse_transform(test_pred_s.reshape(-1, 1)).flatten()
         test_actual  = test_vals_full[:len(test_pred)]
 
-        # Trim
         mn_tr = min(len(train_actual), len(train_pred))
         mn_te = min(len(test_actual),  len(test_pred))
         train_actual = train_actual[:mn_tr]; train_pred = train_pred[:mn_tr]
         test_actual  = test_actual[:mn_te];  test_pred  = test_pred[:mn_te]
 
-        # Feature importance (XGBoost saja)
         feat_imp = getattr(mdl, "feature_importances_", None)
 
-        # Future forecast – iteratif: prediksi satu langkah, masukkan ke window
         last_window = list(scaled[-window:])    # window terakhir dari semua data
         future_pred = []
         for _ in range(forecast_days):
@@ -322,9 +263,6 @@ def train_model(
 
         future_pred = np.array(future_pred)
 
-    # ══════════════════════════════════════════════════════════════════════
-    # MODEL: LSTM
-    # ══════════════════════════════════════════════════════════════════════
     elif model_name == "LSTM":
         try:
             import tensorflow as tf
@@ -410,10 +348,6 @@ def train_model(
         "window":        window,
     }
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# CHART BUILDERS
-# ══════════════════════════════════════════════════════════════════════════════
 
 def _layout(title="", **kw) -> dict:
     base = dict(
@@ -517,25 +451,23 @@ def render_forecasting_zone() -> None:
 
     col_l, col_r = st.columns([1, 1.8], gap="large")
 
-    # ══════════════════════════════════════════════════════════════════════
-    # PANEL KIRI – Upload & Konfigurasi
-    # ══════════════════════════════════════════════════════════════════════
+    # 
     with col_l:
-        st.markdown("### 📁 Upload Dataset")
+        st.markdown("### Upload Dataset")
         uploaded = st.file_uploader(
             "Unggah dataset (CSV/XLSX)",
             type=["csv", "xlsx", "xls"],
             help="Limit 200 MB. Harus ada kolom tanggal dan kolom energi/kWh.",
         )
         if uploaded is None:
-            st.warning("⚠️ Silakan unggah file CSV/XLSX untuk memulai forecasting.")
+            st.warning("Silakan unggah file CSV/XLSX untuk memulai forecasting.")
 
         st.divider()
-        st.markdown("### ⚙️ Konfigurasi Model")
+        st.markdown("### Konfigurasi Model")
 
         # 1. Pilih model
         model_name = st.selectbox(
-            "🤖 Learning Method:",
+            "Learning Method:",
             _MODELS,
             index=3,   # default XGBOOST
             help=(
@@ -549,7 +481,7 @@ def render_forecasting_zone() -> None:
 
         # 2. Rasio train/test
         split_label = st.selectbox(
-            "📊 Select Train/Test Split Ratio:",
+            "Select Train/Test Split Ratio:",
             list(_SPLIT_OPTIONS.keys()),
             index=1,   # default 80:20
             help=(
@@ -561,7 +493,7 @@ def render_forecasting_zone() -> None:
 
         # 3. Hari forecast
         forecast_days = int(st.number_input(
-            "📅 Input day to forecast:",
+            "Input day to forecast:",
             min_value=1, max_value=365, value=30, step=1,
             help="Berapa hari ke depan ingin diproyeksikan setelah data terakhir.",
         ))
@@ -570,7 +502,7 @@ def render_forecasting_zone() -> None:
         window = 7   # default
         if model_name != "ARIMA":
             window = int(st.number_input(
-                "🪟 Sliding window size:",
+                "Sliding window size:",
                 min_value=3, max_value=60, value=7, step=1,
                 help=(
                     "Jumlah titik waktu sebelumnya yang digunakan sebagai input.\n"
@@ -580,7 +512,7 @@ def render_forecasting_zone() -> None:
 
         # 5. Pilih grafik
         chart_choice = st.selectbox(
-            "📉 Choose chart to display:",
+            "Choose chart to display:",
             [
                 "— Pilih grafik —",
                 "Actual Dataset",
@@ -595,14 +527,12 @@ def render_forecasting_zone() -> None:
         )
 
         run_btn = st.button(
-            "🚀 Jalankan Forecasting",
+            "Jalankan Forecasting",
             use_container_width=True,
             type="primary",
         )
 
-    # ══════════════════════════════════════════════════════════════════════
-    # PANEL KANAN – Grafik & Metrik
-    # ══════════════════════════════════════════════════════════════════════
+    # 
     with col_r:
         st.markdown("### 📊 Visualisasi Forecasting")
 
@@ -730,10 +660,8 @@ def render_forecasting_zone() -> None:
                     use_container_width=True,
                 )
 
-        # ════════════════════════════════════════════════════════════════
-        # EVALUATION METRICS
-        # ════════════════════════════════════════════════════════════════
-        st.markdown("### 📐 Evaluation Metrics")
+        # 
+        st.markdown("### Evaluation Metrics")
 
         if res:
             m = res["test_metrics"]
@@ -761,7 +689,7 @@ def render_forecasting_zone() -> None:
             )
 
             # Metrik train (dalam expander)
-            with st.expander("📊 Train Metrics (in-sample)"):
+            with st.expander("Train Metrics (in-sample)"):
                 tm = res["train_metrics"]
                 t1, t2, t3, t4, t5 = st.columns(5)
                 t1.metric("MAPE", f"{tm['MAPE']:.2f}%")
@@ -776,7 +704,7 @@ def render_forecasting_zone() -> None:
 
             # Feature importance (XGBoost)
             if res.get("feat_imp") is not None:
-                with st.expander("🔍 Feature Importance (XGBOOST)"):
+                with st.expander("Feature Importance (XGBOOST)"):
                     imp = res["feat_imp"]
                     w_  = res["window"]
                     labels = [f"lag_{i+1}" for i in range(len(imp))]
@@ -812,7 +740,7 @@ def render_forecasting_zone() -> None:
                 "model":          res.get("model_name", model_name),
             })
             st.download_button(
-                "⬇️ Download Hasil Forecast CSV",
+                "Download Hasil Forecast CSV",
                 data=df_dl.to_csv(index=False).encode("utf-8"),
                 file_name=f"forecast_{res.get('model_name','model')}.csv",
                 mime="text/csv",

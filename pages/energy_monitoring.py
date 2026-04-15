@@ -19,7 +19,7 @@ from services.db_service import fetch_energy_log
 def render_energy_monitoring() -> None:
     st.markdown(
         "<h1 style='font-size:2rem;font-weight:800;margin-bottom:0.2rem;'>"
-        "📡 Energy Monitoring – CS Serpong</h1>",
+        "Energy Monitoring – CS Serpong</h1>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -52,13 +52,13 @@ def render_energy_monitoring() -> None:
         total_today = 0.0
 
     k1, k2, k3 = st.columns(3)
-    k1.metric("📊 Jumlah Data",     f"{total_rows:,}")
-    k2.metric("⚡ Energi Terakhir", f"{latest_energy:,.2f} kWh")
-    k3.metric("☀️ Total Hari Ini",  f"{total_today:,.2f} kWh")
+    k1.metric("Jumlah Data",     f"{total_rows:,}")
+    k2.metric("Energi Terakhir", f"{latest_energy:,.2f} kWh")
+    k3.metric("Total Hari Ini",  f"{total_today:,.2f} kWh")
     st.divider()
 
     # ── Data Log Table ────────────────────────────────────────────────────
-    st.markdown("### 🗂️ Tabel Data Log")
+    st.markdown("### Tabel Data Log")
     df_display = df_raw[["Time_Stamp", "Energy_Trafo_2"]].head(50).copy()
     df_display["Time_Stamp"] = df_display["Time_Stamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
     df_display = df_display.rename(columns={"Energy_Trafo_2": "Energy_Trafo_2 (kWh)"})
@@ -66,7 +66,7 @@ def render_energy_monitoring() -> None:
     st.divider()
 
     # ── Real-time chart ───────────────────────────────────────────────────
-    st.markdown("### 📉 Grafik Real-time Energy Hari Ini")
+    st.markdown("### Grafik Real-time Energy Hari Ini")
     if df_today.empty:
         st.info("Belum ada data untuk hari ini.")
     else:
@@ -75,7 +75,7 @@ def render_energy_monitoring() -> None:
     st.divider()
 
     # ── Daily accumulation ────────────────────────────────────────────────
-    st.markdown("### 📊 Grafik Akumulasi Harian Energy")
+    st.markdown("### Grafik Akumulasi Harian Energy")
 
     df_asc = df_raw.sort_values("Time_Stamp").copy()
     df_asc["Date"] = df_asc["Time_Stamp"].dt.date

@@ -53,11 +53,11 @@ def render_data_rinci_charger() -> None:
     # ── Filter bar ───────────────────────────────────────────────────────
     fc1, fc2, fc3 = st.columns(3)
     stations = ["Semua"] + sorted(_CHARGERS["station"].unique().tolist())
-    sel_station = fc1.selectbox("🏢 Stasiun", stations)
+    sel_station = fc1.selectbox(" Stasiun", stations)
     statuses = ["Semua"] + sorted(_CHARGERS["status"].unique().tolist())
-    sel_status  = fc2.selectbox("📶 Status", statuses)
+    sel_status  = fc2.selectbox(" Status", statuses)
     types = ["Semua"] + sorted(_CHARGERS["tipe"].unique().tolist())
-    sel_type    = fc3.selectbox("⚡ Tipe", types)
+    sel_type    = fc3.selectbox(" Tipe", types)
 
     df = _CHARGERS.copy()
     if sel_station != "Semua": df = df[df["station"] == sel_station]
@@ -67,14 +67,14 @@ def render_data_rinci_charger() -> None:
     # ── KPIs ─────────────────────────────────────────────────────────────
     st.divider()
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("🔌 Total Charger",     len(df))
-    k2.metric("🟢 Sedang Charging",   (df["status"]=="Charging").sum())
-    k3.metric("⚡ Total Energi Bulan", f"{df['energy_month_kwh'].sum():,.0f} kWh")
-    k4.metric("🔄 Total Sesi Bulan",  f"{df['sesi_bulan'].sum():,}")
+    k1.metric(" Total Charger",     len(df))
+    k2.metric(" Sedang Charging",   (df["status"]=="Charging").sum())
+    k3.metric(" Total Energi Bulan", f"{df['energy_month_kwh'].sum():,.0f} kWh")
+    k4.metric(" Total Sesi Bulan",  f"{df['sesi_bulan'].sum():,}")
     st.divider()
 
     # ── Charger cards ────────────────────────────────────────────────────
-    st.markdown("#### 📋 Daftar Unit Charger")
+    st.markdown("#### Daftar Unit Charger")
     cols_per_row = 3
     rows = [df.iloc[i:i+cols_per_row] for i in range(0, len(df), cols_per_row)]
     for row_df in rows:
@@ -92,13 +92,13 @@ def render_data_rinci_charger() -> None:
                                      padding:1px 8px;font-size:0.72rem;font-weight:700;">{ch['status']}</span>
                       </div>
                       <div style="color:#8892a4;font-size:0.8rem;line-height:1.9;">
-                        🏢 {ch['station']}<br>
-                        ⚡ {ch['tipe']} – <b style='color:#e8eaf6'>{ch['daya_kw']} kW</b><br>
-                        🔌 Konektor: {ch['konektor']}<br>
-                        🔢 S/N: {ch['sn']}<br>
-                        📈 Uptime: <b style='color:{c}'>{ch['uptime_pct']}%</b><br>
-                        ⚡ Energi Bulan: {ch['energy_month_kwh']:,.0f} kWh<br>
-                        🔄 Sesi Bulan: {ch['sesi_bulan']}
+                         {ch['station']}<br>
+                         {ch['tipe']} – <b style='color:#e8eaf6'>{ch['daya_kw']} kW</b><br>
+                         Konektor: {ch['konektor']}<br>
+                         S/N: {ch['sn']}<br>
+                         Uptime: <b style='color:{c}'>{ch['uptime_pct']}%</b><br>
+                         Energi Bulan: {ch['energy_month_kwh']:,.0f} kWh<br>
+                         Sesi Bulan: {ch['sesi_bulan']}
                       </div>
                     </div>
                     """,
@@ -110,7 +110,7 @@ def render_data_rinci_charger() -> None:
     # ── Charts ───────────────────────────────────────────────────────────
     ch1, ch2 = st.columns(2, gap="medium")
     with ch1:
-        st.markdown("#### 📊 Energi per Charger (Bulan Ini)")
+        st.markdown("#### Energi per Charger (Bulan Ini)")
         df_s = df.sort_values("energy_month_kwh", ascending=True)
         fig = go.Figure(go.Bar(
             x=df_s["energy_month_kwh"], y=df_s["charger_id"], orientation="h",
@@ -126,7 +126,7 @@ def render_data_rinci_charger() -> None:
         st.plotly_chart(fig, use_container_width=True)
 
     with ch2:
-        st.markdown("#### 🍩 Distribusi Status")
+        st.markdown("#### Distribusi Status")
         sc = df["status"].value_counts().reset_index()
         sc.columns = ["status", "count"]
         colors = [_STATUS_COLOR.get(s, "#aaa") for s in sc["status"]]
